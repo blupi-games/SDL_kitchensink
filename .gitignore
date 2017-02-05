@@ -30,6 +30,8 @@
 
 # Debug files
 *.dSYM/
+Debug/
+Release/
 
 # Other
 build/
