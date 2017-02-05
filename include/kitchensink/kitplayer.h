@@ -4,9 +4,9 @@
 #include "kitchensink/kitsource.h"
 #include "kitchensink/kitconfig.h"
 
-#include <SDL2/SDL_render.h>
-#include <SDL2/SDL_thread.h>
-#include <SDL2/SDL_surface.h>
+#include <SDL_render.h>
+#include <SDL_thread.h>
+#include <SDL_surface.h>
 
 #include <stdbool.h>
 

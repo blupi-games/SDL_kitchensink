@@ -15,7 +15,7 @@
 #include <libavutil/avstring.h>
 #include <libavutil/imgutils.h>
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #ifdef LIBASS
 #include <ass/ass.h>
 #endif // LIBASS
