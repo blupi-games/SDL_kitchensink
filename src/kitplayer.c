@@ -16,7 +16,9 @@
 #include <libavutil/imgutils.h>
 
 #include <SDL2/SDL.h>
+#ifdef LIBASS
 #include <ass/ass.h>
+#endif // LIBASS
 
 #include <stdlib.h>
 #include <string.h>
@@ -185,8 +187,10 @@ static int reset_libass_track(Kit_Player *player) {
         return 0;
     }
 
+#ifdef LIBASS
     // Flush libass track events
     ass_flush_events(player->ass_track);
+#endif // LIBASS
     return 0;
 }
 
@@ -536,6 +540,7 @@ static void _HandleBitmapSubtitle(Kit_SubtitlePacket** spackets, int *n, Kit_Pla
     }
 }
 
+#ifdef LIBASS
 static void _ProcessAssSubtitleRect(Kit_Player *player, AVSubtitleRect *rect) {
     ass_process_data((ASS_Track*)player->ass_track, rect->ass, strlen(rect->ass));
 }
@@ -604,6 +609,7 @@ static void _HandleAssSubtitle(Kit_SubtitlePacket** spackets, int *n, Kit_Player
         }
     }
 }
+#endif // LIBASS
 
 static void _HandleSubtitlePacket(Kit_Player *player, AVPacket *packet) {
     assert(player != NULL);
@@ -644,7 +650,9 @@ static void _HandleSubtitlePacket(Kit_Player *player, AVPacket *packet) {
                         _HandleBitmapSubtitle(spackets, &n, player, pts, &sub, sub.rects[r]);
                         break;
                     case SUBTITLE_ASS:
+#ifdef LIBASS
                         _ProcessAssSubtitleRect(player, sub.rects[r]);
+#endif // LIBASS
                         has_ass = true;
                         break;
                     case SUBTITLE_TEXT:
@@ -705,9 +713,11 @@ static void _HandlePacket(Kit_Player *player, AVPacket *packet) {
     else if(player->acodec_ctx != NULL && packet->stream_index == player->src->astream_idx) {
         _HandleAudioPacket(player, packet);
     }
+#ifdef LIBASS
     else if(player->scodec_ctx != NULL && packet->stream_index == player->src->sstream_idx) {
         _HandleSubtitlePacket(player, packet);
     }
+#endif // LIBASS
 }
 
 static void _HandleFlushCommand(Kit_Player *player, Kit_ControlPacket *packet) {
@@ -986,11 +996,13 @@ Kit_Player* Kit_CreatePlayer(const Kit_Source *src) {
 
         // Initialize libass renderer
         Kit_LibraryState *state = Kit_GetLibraryState();
+#ifdef LIBASS
         player->ass_renderer = ass_renderer_init(state->libass_handle);
         if(player->ass_renderer == NULL) {
             Kit_SetError("Unable to initialize libass renderer");
             goto error;
         }
+#endif // LIBASS
 
         // Read fonts from attachment streams and give them to libass
         AVFormatContext *format_ctx = player->src->format_ctx;
@@ -1002,6 +1014,7 @@ Kit_Player* Kit_CreatePlayer(const Kit_Source *src) {
                     "filename",
                     NULL,
                     AV_DICT_MATCH_CASE);
+#ifdef LIBASS
                 if(tag) {
                     ass_add_font(
                         state->libass_handle,
@@ -1009,9 +1022,11 @@ Kit_Player* Kit_CreatePlayer(const Kit_Source *src) {
                         (char*)st->codec->extradata,
                         st->codec->extradata_size);
                 }
+#endif // LIBASS
             }
         }
 
+#ifdef LIBASS
         // Init libass fonts and window frame size
         ass_set_fonts(player->ass_renderer, NULL, "sans-serif", ASS_FONTPROVIDER_AUTODETECT, NULL, 1);
         ass_set_frame_size(player->ass_renderer, vcodec_ctx->width, vcodec_ctx->height);
@@ -1031,6 +1046,7 @@ Kit_Player* Kit_CreatePlayer(const Kit_Source *src) {
                 (char*)scodec_ctx->subtitle_header,
                 scodec_ctx->subtitle_header_size);
         }
+#endif // LIBASS
     }
 
     player->cbuffer = Kit_CreateBuffer(KIT_CBUFFERSIZE, _FreeControlPacket);
@@ -1103,12 +1119,14 @@ error:
         swr_free((struct SwrContext **)player->swr);
     }
 
+#ifdef LIBASS
     if(player->ass_track != NULL) {
         ass_free_track((ASS_Track*)player->ass_track);
     }
     if(player->ass_renderer != NULL) {
         ass_renderer_done((ASS_Renderer *)player->ass_renderer);
     }
+#endif // LIBASS
     if(player != NULL) {
         free(player);
     }
@@ -1156,6 +1174,7 @@ void Kit_ClosePlayer(Kit_Player *player) {
     Kit_DestroyBuffer((Kit_Buffer*)player->vbuffer);
     Kit_DestroyList((Kit_List*)player->sbuffer);
 
+#ifdef LIBASS
     // Free libass context
     if(player->ass_track != NULL) {
         ass_free_track((ASS_Track*)player->ass_track);
@@ -1163,6 +1182,7 @@ void Kit_ClosePlayer(Kit_Player *player) {
     if(player->ass_renderer != NULL) {
         ass_renderer_done((ASS_Renderer *)player->ass_renderer);
     }
+#endif // LIBASS
 
     // Free the player structure itself
     free(player);

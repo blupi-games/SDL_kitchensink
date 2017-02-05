@@ -1,7 +1,9 @@
 #include "kitchensink/kitchensink.h"
 #include "kitchensink/internal/kitlibstate.h"
 #include <libavformat/avformat.h>
+#ifdef LIBASS
 #include <ass/ass.h>
+#endif // LIBASS
 #include <assert.h>
 
 // No-op
@@ -23,11 +25,13 @@ int Kit_Init(unsigned int flags) {
 
     state->init_flags = flags;
 
+#ifdef LIBASS
     // Init libass
     state->libass_handle = ass_library_init();
 
     // Make libass message spam go away
     ass_set_message_cb(state->libass_handle, _libass_msg_callback, NULL);
+#endif // LIBASS
     
     return 0;
 }
@@ -40,7 +44,9 @@ void Kit_Quit() {
     }
     state->init_flags = 0;
 
+#ifdef LIBASS
     ass_library_done(state->libass_handle);
+#endif LIBASS
 }
 
 void Kit_GetVersion(Kit_Version *version) {
