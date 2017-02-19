@@ -19,8 +19,8 @@ set(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} -Os -DNDEBUG")
 option(BUILD_EXAMPLES "Build examples" OFF)
 option(BUILD_TESTS "Build unittests" OFF)
 
-find_package(SDL2)
 find_package(PkgConfig REQUIRED)
+pkg_search_module(SDL2 REQUIRED sdl2)
 pkg_search_module(ASS REQUIRED libass)
 pkg_search_module(FFMPEG REQUIRED libavcodec libformat libavutil libswscale libswresample)
 
