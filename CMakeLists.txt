@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
 project(SDL_kitchensink C)
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 set(VERSION_MAJOR "0")
 set(VERSION_MINOR "0")
@@ -21,8 +20,9 @@ option(BUILD_EXAMPLES "Build examples" OFF)
 option(BUILD_TESTS "Build unittests" OFF)
 
 find_package(SDL2)
-find_package(ass)
-find_package(ffmpeg COMPONENTS avcodec avformat avutil swscale swresample)
+find_package(PkgConfig REQUIRED)
+pkg_search_module(ASS REQUIRED libass)
+pkg_search_module(FFMPEG REQUIRED libavcodec libformat libavutil libswscale libswresample)
 
 if(BUILD_TESTS)
     add_subdirectory(tests)
