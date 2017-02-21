@@ -21,7 +21,7 @@ option(BUILD_TESTS "Build unittests" OFF)
 
 find_package(PkgConfig REQUIRED)
 pkg_search_module(SDL2 REQUIRED sdl2)
-pkg_search_module(ASS REQUIRED libass)
+# pkg_search_module(ASS REQUIRED libass)
 pkg_search_module(AVCODEC REQUIRED libavcodec)
 pkg_search_module(AVFORMAT REQUIRED libavformat)
 pkg_search_module(AVUTIL REQUIRED libavutil)
@@ -35,7 +35,7 @@ endif()
 include_directories(
     include/
     ${SDL2_INCLUDE_DIRS}
-    ${ASS_INCLUDE_DIRS}
+#     ${ASS_INCLUDE_DIRS}
     ${AVCODEC_INCLUDE_DIRS}
     ${AVFORMAT_INCLUDE_DIRS}
     ${AVUTIL_INCLUDE_DIRS}
@@ -56,7 +56,7 @@ target_compile_options(SDL_kitchensink PRIVATE "-fvisibility=hidden")
 
 target_link_libraries(SDL_kitchensink
     ${SDL2_LIBRARIES}
-    ${ASS_LIBRARIES}
+#     ${ASS_LIBRARIES}
     ${AVCODEC_LIBRARIES}
     ${AVFORMAT_LIBRARIES}
     ${AVUTIL_LIBRARIES}
@@ -77,13 +77,13 @@ if(BUILD_EXAMPLES)
         SDL_kitchensink_static
         ${SDL2_LIBRARIES}
         ${FFMPEG_LIBRARIES}
-        ${ASS_LIBRARIES}
+#         ${ASS_LIBRARIES}
     )
     target_link_libraries(examplevideo
         SDL_kitchensink_static
         ${SDL2_LIBRARIES}
         ${FFMPEG_LIBRARIES}
-        ${ASS_LIBRARIES}
+#         ${ASS_LIBRARIES}
     )
 endif()
 
