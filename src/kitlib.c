@@ -46,7 +46,7 @@ void Kit_Quit() {
 
 #ifdef LIBASS
     ass_library_done(state->libass_handle);
-#endif LIBASS
+#endif // LIBASS
 }
 
 void Kit_GetVersion(Kit_Version *version) {
