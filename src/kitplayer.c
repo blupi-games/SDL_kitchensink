@@ -661,12 +661,12 @@ static void _HandleSubtitlePacket(Kit_Player *player, AVPacket *packet) {
                         break;
                 }
             }
-
+#ifdef LIBASS
             // Process libass content
             if(has_ass) {
                 _HandleAssSubtitle(spackets, &n, player, pts, &sub);
             }
-
+#endif // LIBASS
             // Lock, write to subtitle buffer, unlock
             if(SDL_LockMutex(player->smutex) == 0) {
                 if(has_ass) {
