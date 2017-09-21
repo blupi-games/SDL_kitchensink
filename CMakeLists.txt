@@ -46,23 +46,29 @@ include_directories(
 FILE(GLOB SOURCES "src/*.c")
 FILE(GLOB HEADERS "include/kitchensink/*.h")
 
-add_library(SDL_kitchensink SHARED ${SOURCES})
+if(NOT ${DISABLE_SHARED})
+    add_library(SDL_kitchensink SHARED ${SOURCES})
+endif()
 add_library(SDL_kitchensink_static STATIC ${SOURCES})
 
-set_target_properties(SDL_kitchensink PROPERTIES DEBUG_POSTFIX "d")
+if(NOT ${DISABLE_SHARED})
+    set_target_properties(SDL_kitchensink PROPERTIES DEBUG_POSTFIX "d")
+endif()
 set_target_properties(SDL_kitchensink_static PROPERTIES DEBUG_POSTFIX "d")
-target_compile_definitions(SDL_kitchensink PRIVATE "KIT_DLL;KIT_DLL_EXPORTS")
-target_compile_options(SDL_kitchensink PRIVATE "-fvisibility=hidden")
+if(NOT ${DISABLE_SHARED})
+    target_compile_options(SDL_kitchensink PRIVATE "-fvisibility=hidden")
+    target_compile_definitions(SDL_kitchensink PRIVATE "KIT_DLL;KIT_DLL_EXPORTS")
 
-target_link_libraries(SDL_kitchensink
-    ${SDL2_LIBRARIES}
-#     ${ASS_LIBRARIES}
-    ${AVCODEC_LIBRARIES}
-    ${AVFORMAT_LIBRARIES}
-    ${AVUTIL_LIBRARIES}
-    ${SWSCALE_LIBRARIES}
-    ${SWRESAMPLE_LIBRARIES}
-)
+    target_link_libraries(SDL_kitchensink
+        ${SDL2_LIBRARIES}
+        ${ASS_LIBRARIES}
+        ${AVCODEC_LIBRARIES}
+        ${AVFORMAT_LIBRARIES}
+        ${AVUTIL_LIBRARIES}
+        ${SWSCALE_LIBRARIES}
+        ${SWRESAMPLE_LIBRARIES}
+    )
+endif()
 
 if(BUILD_EXAMPLES)
     add_executable(exampleaudio examples/example_audio.c)
@@ -90,7 +96,10 @@ endif()
 # Installation
 
 INSTALL(FILES ${HEADERS} DESTINATION include/kitchensink/)
-INSTALL(TARGETS SDL_kitchensink SDL_kitchensink_static
+if(NOT ${DISABLE_SHARED})
+    set(TARGET_SHARED SDL_kitchensink)
+endif()
+INSTALL(TARGETS ${TARGET_SHARED} SDL_kitchensink_static
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
