@@ -1,20 +1,24 @@
 # SDL_kitchensink
 
 [![Build Status](https://travis-ci.org/katajakasa/SDL_kitchensink.svg?branch=master)](https://travis-ci.org/katajakasa/SDL_kitchensink)
-[![Coverity Scan Build Status](https://scan.coverity.com/projects/7585/badge.svg)](https://scan.coverity.com/projects/katajakasa-sdl_kitchensink)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=sdl_kitchensink&metric=alert_status)](https://sonarcloud.io/dashboard?id=sdl_kitchensink)
 
 FFmpeg and SDL2 based library for audio and video playback, written in C99.
 
-This library is still very much todo, but it's slowly getting there.
+Documentation is available at http://katajakasa.github.io/SDL_kitchensink/
 
 Features:
-* Decoding video & audio via FFmpeg
-* Dumping video data on SDL_textures
+* Decoding video, audio and subtitles via FFmpeg
+* Dumping video and subtitle data on SDL_textures/SDL_Surfaces
 * Dumping audio data in the usual mono/stereo interleaved formats
 * Automatic audio and video conversion to SDL2 friendly formats
 * Synchronizing video & audio to clock
 * Seeking forwards and backwards
-* Bitmap & libass subtitle support. No text (srt, sub) support yet.
+* Bitmap, text and SSA/ASS subtitle support
+
+Note! Master branch is for the development of v1.0.0 series. v0 can be found in the 
+rel-kitchensink-0 branch. v0 is no longer in active development and only bug- and security-fixes
+are accepted.
 
 ## 1. Library requirements
 
@@ -23,9 +27,9 @@ Build requirements:
 * GCC (C99 support required)
 
 Library requirements:
-* SDL2 (>=2.0.3) (Note! Examples require 2.0.4!)
+* SDL2 (>=2.0.5)
 * FFmpeg (>=3.0)
-* libass
+* libass (optional, supports runtime linking via SDL_LoadSO)
 * CUnit (optional, for unittests)
 
 Note that Clang might work, but is not tested. Older SDL2 and FFmpeg library versions
@@ -82,20 +86,56 @@ Make sure CUnit is installed, then add ```-DBUILD_UNITTESTS=1``` to the cmake ar
 
 You can run unittests by running ```make unittest```.
 
-## 3. License
+### 2.5. Building with AddressSanitizer
 
-MIT. Please see ```LICENSE``` for details.
+This is for development/debugging use only!
 
-Note that FFmpeg has a rather complex license. Please take a look at [FFmpeg Legal page](http://ffmpeg.org/legal.html)
-for details.
+Make sure llvm is installed, then add ```-DUSE_ASAN=1``` to the cmake arguments and rebuild. Note that ASAN is not
+supported on all OSes (eg. windows).
 
-## 4. Why SDL_kitchensink
+After building, you can run with the following (make sure to set correct llvm-symbolizer path):
+```
+ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer ./examplevideo <my videofile>
+```
+
+## 3. Why SDL_kitchensink
 
 Because pulling major blob of library code like ffmpeg feels like bringing in a whole house with its
 kitchensink and everything to the project. Also, it sounded funny. Also, SDL_ffmpeg is already reserved :(
 
-## 5. Examples
+## 4. Examples
 
 Please see examples directory. You can also take a look at unittests for some help.
 Note that examples are NOT meant for any kind of real life use; they are only meant to
 show simple use cases for the library.
+
+## 5. FFMPEG & licensing
+
+Note that FFmpeg has a rather complex license. Please take a look at 
+[FFmpeg Legal page](http://ffmpeg.org/legal.html) for details.
+
+## 6. License
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2018 Tuomas Virtanen
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

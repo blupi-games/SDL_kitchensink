@@ -1,16 +1,14 @@
 #include <kitchensink/kitchensink.h>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <stdio.h>
 #include <stdbool.h>
 
 /*
-* Requires SDL2 2.0.4 !
-*
 * Note! This example does not do proper error handling etc.
 * It is for example use only!
 */
 
-#define AUDIOBUFFER_SIZE (16384)
+#define AUDIOBUFFER_SIZE (32768)
 
 const char *stream_types[] = {
     "KIT_STREAMTYPE_UNKNOWN",
@@ -39,7 +37,7 @@ int main(int argc, char *argv[]) {
 
     // Get filename to open
     if(argc != 2) {
-        fprintf(stderr, "Usage: exampleplay <filename>\n");
+        fprintf(stderr, "Usage: audio <filename>\n");
         return 0;
     }
     filename = argv[1];
@@ -51,7 +49,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    err = Kit_Init(KIT_INIT_FORMATS|KIT_INIT_NETWORK);
+    err = Kit_Init(KIT_INIT_NETWORK);
     if(err != 0) {
         fprintf(stderr, "Unable to initialize Kitchensink: %s", Kit_GetError());
         return 1;
@@ -64,13 +62,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Disable any video and subtitle streams. If we leave these enabled and then don't
-    // clear the buffers for these sometimes, decoding will block.
-    Kit_SetSourceStream(src, KIT_STREAMTYPE_SUBTITLE, -1);
-    Kit_SetSourceStream(src, KIT_STREAMTYPE_VIDEO, -1);
-
     // Print stream information
-    Kit_StreamInfo sinfo;
+    Kit_SourceStreamInfo sinfo;
     fprintf(stderr, "Source streams:\n");
     for(int i = 0; i < Kit_GetSourceStreamCount(src); i++) {
         err = Kit_GetSourceStreamInfo(src, &sinfo, i);
@@ -81,8 +74,13 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, " * Stream #%d: %s\n", i, stream_types[sinfo.type]);
     }
 
-    // Create the player
-    player = Kit_CreatePlayer(src);
+    // Create the player. No video, pick best audio stream, no subtitles, no screen
+    player = Kit_CreatePlayer(
+        src,
+        -1,
+        Kit_GetBestSourceStream(src, KIT_STREAMTYPE_AUDIO),
+        -1,
+        0, 0);
     if(player == NULL) {
         fprintf(stderr, "Unable to create player: %s\n", Kit_GetError());
         return 1;
@@ -92,25 +90,26 @@ int main(int argc, char *argv[]) {
     Kit_PlayerInfo pinfo;
     Kit_GetPlayerInfo(player, &pinfo);
 
-    if(!pinfo.audio.is_enabled) {
+    // Make sure there is audio in the file to play first.
+    if(Kit_GetPlayerAudioStream(player) == -1) {
         fprintf(stderr, "File contains no audio!\n");
         return 1;
     }
 
     fprintf(stderr, "Media information:\n");
     fprintf(stderr, " * Audio: %s (%s), %dHz, %dch, %db, %s\n",
-        pinfo.acodec,
-        pinfo.acodec_name,
-        pinfo.audio.samplerate,
-        pinfo.audio.channels,
-        pinfo.audio.bytes,
-        pinfo.audio.is_signed ? "signed" : "unsigned");
+        pinfo.audio.codec.name,
+        pinfo.audio.codec.description,
+        pinfo.audio.output.samplerate,
+        pinfo.audio.output.channels,
+        pinfo.audio.output.bytes,
+        pinfo.audio.output.is_signed ? "signed" : "unsigned");
 
     // Init audio
     SDL_memset(&wanted_spec, 0, sizeof(wanted_spec));
-    wanted_spec.freq = pinfo.audio.samplerate;
-    wanted_spec.format = pinfo.audio.format;
-    wanted_spec.channels = pinfo.audio.channels;
+    wanted_spec.freq = pinfo.audio.output.samplerate;
+    wanted_spec.format = pinfo.audio.output.format;
+    wanted_spec.channels = pinfo.audio.output.channels;
     audio_dev = SDL_OpenAudioDevice(NULL, 0, &wanted_spec, &audio_spec, 0);
     SDL_PauseAudioDevice(audio_dev, 0);
 
@@ -127,26 +126,22 @@ int main(int argc, char *argv[]) {
         }
 
         // Refresh audio
-        ret = SDL_GetQueuedAudioSize(audio_dev);
-        if(ret < AUDIOBUFFER_SIZE) {
-            ret = Kit_GetAudioData(player, (unsigned char*)audiobuf, AUDIOBUFFER_SIZE, 0);
+        int queued = SDL_GetQueuedAudioSize(audio_dev);
+        if(queued < AUDIOBUFFER_SIZE) {
+            ret = Kit_GetPlayerAudioData(player, (unsigned char*)audiobuf, AUDIOBUFFER_SIZE - queued);
             if(ret > 0) {
-                SDL_LockAudio();
                 SDL_QueueAudio(audio_dev, audiobuf, ret);
-                SDL_UnlockAudio();
-                SDL_PauseAudioDevice(audio_dev, 0);
             }
         }
 
         SDL_Delay(1);
     }
 
-    SDL_CloseAudioDevice(audio_dev);
-
     Kit_ClosePlayer(player);
     Kit_CloseSource(src);
-
     Kit_Quit();
+
+    SDL_CloseAudioDevice(audio_dev);
     SDL_Quit();
     return 0;
 }
