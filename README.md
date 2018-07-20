@@ -9,7 +9,7 @@ Documentation is available at http://katajakasa.github.io/SDL_kitchensink/
 
 Features:
 * Decoding video, audio and subtitles via FFmpeg
-* Dumping video and subtitle data on SDL_textures/SDL_Surfaces
+* Dumping video and subtitle data on SDL_textures
 * Dumping audio data in the usual mono/stereo interleaved formats
 * Automatic audio and video conversion to SDL2 friendly formats
 * Synchronizing video & audio to clock
@@ -80,13 +80,7 @@ Change CMAKE_INSTALL_PREFIX as necessary to change the installation path. The fi
 
 Just add ```-DBUILD_EXAMPLES=1``` to cmake arguments and rebuild.
 
-### 2.4. Building unittests
-
-Make sure CUnit is installed, then add ```-DBUILD_UNITTESTS=1``` to the cmake arguments and rebuild.
-
-You can run unittests by running ```make unittest```.
-
-### 2.5. Building with AddressSanitizer
+### 2.4. Building with AddressSanitizer
 
 This is for development/debugging use only!
 
