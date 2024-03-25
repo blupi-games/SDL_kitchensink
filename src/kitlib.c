@@ -1,16 +1,18 @@
 #include <assert.h>
+#ifdef USE_DYNAMIC_LIBASS
 #include <SDL_loadso.h>
+#endif
 
 #include <libavformat/avformat.h>
+#include "libavcodec/avcodec.h"
 
-#include "kitchensink/internal/utils/kitlog.h"
 #include "kitchensink/kitchensink.h"
 #include "kitchensink/internal/kitlibstate.h"
 
 static void _libass_msg_callback(int level, const char *fmt, va_list va, void *data) {}
 
-static int max(int a, int b) { return a > b ? a : b; }
-static int min(int a, int b) { return a < b ? a : b; }
+static int Kit_max(int a, int b) { return a > b ? a : b; }
+static int Kit_min(int a, int b) { return a < b ? a : b; }
 
 int Kit_InitASS(Kit_LibraryState *state) {
 #ifdef LIBASS
@@ -49,7 +51,7 @@ int Kit_Init(unsigned int flags) {
 
     if(state->init_flags != 0) {
         Kit_SetError("SDL_kitchensink is already initialized");
-        goto exit_0;
+        goto EXIT_0;
     }
 
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58, 9, 100)
@@ -62,17 +64,17 @@ int Kit_Init(unsigned int flags) {
     if(flags & KIT_INIT_ASS) {
         if(Kit_InitASS(state) != 0) {
             Kit_SetError("Failed to initialize libass");
-            goto exit_1;
+            goto EXIT_1;
         }
     }
 
     state->init_flags = flags;
     return 0;
 
-exit_1:
+EXIT_1:
     avformat_network_deinit();
 
-exit_0:
+EXIT_0:
     return 1;
 }
 
@@ -92,25 +94,25 @@ void Kit_SetHint(Kit_HintType type, int value) {
     Kit_LibraryState *state = Kit_GetLibraryState();
     switch(type) {
         case KIT_HINT_THREAD_COUNT:
-            state->thread_count =  max(value, 1);
+            state->thread_count =  Kit_max(value, 0);
             break;
         case KIT_HINT_FONT_HINTING:
-            state->font_hinting = max(min(value, KIT_FONT_HINTING_COUNT), 0);
+            state->font_hinting = Kit_max(Kit_min(value, KIT_FONT_HINTING_COUNT), 0);
             break;
         case KIT_HINT_VIDEO_BUFFER_FRAMES:
-            state->video_buf_frames = min(value, 1);
+            state->video_buf_frames = Kit_max(value, 1);
             break;
         case KIT_HINT_AUDIO_BUFFER_FRAMES:
-            state->audio_buf_frames = min(value, 1);
+            state->audio_buf_frames = Kit_max(value, 1);
             break;
         case KIT_HINT_SUBTITLE_BUFFER_FRAMES:
-            state->subtitle_buf_frames = min(value, 1);
+            state->subtitle_buf_frames = Kit_max(value, 1);
             break;
     }
 }
 
 int Kit_GetHint(Kit_HintType type) {
-    Kit_LibraryState *state = Kit_GetLibraryState();
+    const Kit_LibraryState *state = Kit_GetLibraryState();
     switch(type) {
         case KIT_HINT_THREAD_COUNT:
             return state->thread_count;

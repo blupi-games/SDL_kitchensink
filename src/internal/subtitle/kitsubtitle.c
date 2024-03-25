@@ -3,11 +3,8 @@
 #include <SDL.h>
 #include <libavformat/avformat.h>
 
-#include "kitchensink/internal/utils/kitlog.h"
-
 #include "kitchensink/kiterror.h"
 #include "kitchensink/kitlib.h"
-#include "kitchensink/internal/utils/kitlog.h"
 #include "kitchensink/internal/kitlibstate.h"
 #include "kitchensink/internal/subtitle/kitsubtitlepacket.h"
 #include "kitchensink/internal/subtitle/kitsubtitle.h"
@@ -15,7 +12,6 @@
 #include "kitchensink/internal/subtitle/renderers/kitsubimage.h"
 #include "kitchensink/internal/subtitle/renderers/kitsubass.h"
 #include "kitchensink/internal/subtitle/renderers/kitsubrenderer.h"
-#include "kitchensink/internal/utils/kithelpers.h"
 
 
 typedef struct Kit_SubtitleDecoder {
@@ -29,9 +25,12 @@ static void free_out_subtitle_packet_cb(void *packet) {
     Kit_FreeSubtitlePacket((Kit_SubtitlePacket*)packet);
 }
 
-static void dec_decode_subtitle_cb(Kit_Decoder *dec, AVPacket *in_packet) {
+static int dec_decode_subtitle_cb(Kit_Decoder *dec, AVPacket *in_packet) {
     assert(dec != NULL);
-    assert(in_packet != NULL);
+
+    if(in_packet == NULL) {
+        return 0;
+    }
 
     Kit_SubtitleDecoder *subtitle_dec = dec->userdata;
     double pts;
@@ -43,7 +42,7 @@ static void dec_decode_subtitle_cb(Kit_Decoder *dec, AVPacket *in_packet) {
     if(in_packet->size > 0) {
         len = avcodec_decode_subtitle2(dec->codec_ctx, &subtitle_dec->scratch_frame, &frame_finished, in_packet);
         if(len < 0) {
-            return;
+            return 0;
         }
 
         if(frame_finished) {
@@ -59,17 +58,18 @@ static void dec_decode_subtitle_cb(Kit_Decoder *dec, AVPacket *in_packet) {
                 subtitle_dec->scratch_frame.end_display_time = 30000;
             }
 
-            start = pts + subtitle_dec->scratch_frame.start_display_time / 1000.0F;
-            end = pts + subtitle_dec->scratch_frame.end_display_time / 1000.0F;
+            start = subtitle_dec->scratch_frame.start_display_time / 1000.0F;
+            end = subtitle_dec->scratch_frame.end_display_time / 1000.0F;
 
             // Create a packet. This should be filled by renderer.
             Kit_RunSubtitleRenderer(
-                subtitle_dec->renderer, &subtitle_dec->scratch_frame, start, end);
+                subtitle_dec->renderer, &subtitle_dec->scratch_frame, pts, start, end);
 
             // Free subtitle since it has now been handled
             avsubtitle_free(&subtitle_dec->scratch_frame);
         }
     }
+    return 0;
 }
 
 static void dec_close_subtitle_cb(Kit_Decoder *dec) {
@@ -91,7 +91,7 @@ Kit_Decoder* Kit_CreateSubtitleDecoder(const Kit_Source *src, int stream_index, 
         return NULL;
     }
 
-    Kit_LibraryState *state = Kit_GetLibraryState();
+    const Kit_LibraryState *state = Kit_GetLibraryState();
 
     // First the generic decoder component
     Kit_Decoder *dec = Kit_CreateDecoder(
@@ -102,14 +102,14 @@ Kit_Decoder* Kit_CreateSubtitleDecoder(const Kit_Source *src, int stream_index, 
         state->thread_count);
     if(dec == NULL) {
         Kit_SetError("Unable to allocate subtitle decoder");
-        goto exit_0;
+        goto EXIT_0;
     }
 
     // ... then allocate the subtitle decoder
     Kit_SubtitleDecoder *subtitle_dec = calloc(1, sizeof(Kit_SubtitleDecoder));
     if(subtitle_dec == NULL) {
         Kit_SetError("Unable to allocate subtitle decoder");
-        goto exit_1;
+        goto EXIT_1;
     }
 
     // Set format. Note that is_enabled may be changed below ...
@@ -142,14 +142,14 @@ Kit_Decoder* Kit_CreateSubtitleDecoder(const Kit_Source *src, int stream_index, 
             break;
     }
     if(subtitle_dec->renderer == NULL) {
-        goto exit_2;
+        goto EXIT_2;
     }
 
     // Allocate texture atlas for subtitle rectangles
     subtitle_dec->atlas = Kit_CreateAtlas();
     if(subtitle_dec->atlas == NULL) {
         Kit_SetError("Unable to allocate subtitle texture atlas");
-        goto exit_3;
+        goto EXIT_3;
     }
 
     // Set callbacks and userdata, and we're go
@@ -159,34 +159,31 @@ Kit_Decoder* Kit_CreateSubtitleDecoder(const Kit_Source *src, int stream_index, 
     dec->output = output;
     return dec;
 
-exit_3:
+EXIT_3:
     Kit_CloseSubtitleRenderer(subtitle_dec->renderer);
-exit_2:
+EXIT_2:
     free(subtitle_dec);
-exit_1:
+EXIT_1:
     Kit_CloseDecoder(dec);
-exit_0:
+EXIT_0:
     return NULL;
 }
 
-void Kit_SetSubtitleDecoderSize(Kit_Decoder *dec, int screen_w, int screen_h) {
+void Kit_SetSubtitleDecoderSize(const Kit_Decoder *dec, int screen_w, int screen_h) {
     assert(dec != NULL);
-    Kit_SubtitleDecoder *subtitle_dec = dec->userdata;
+    const Kit_SubtitleDecoder *subtitle_dec = dec->userdata;
     Kit_SetSubtitleRendererSize(subtitle_dec->renderer, screen_w, screen_h);
 }
 
-void Kit_GetSubtitleDecoderTexture(Kit_Decoder *dec, SDL_Texture *texture) {
+void Kit_GetSubtitleDecoderTexture(const Kit_Decoder *dec, SDL_Texture *texture, double sync_ts) {
     assert(dec != NULL);
     assert(texture != NULL);
 
-    Kit_SubtitleDecoder *subtitle_dec = dec->userdata;
-    double sync_ts = _GetSystemTime() - dec->clock_sync;
-
-    // Tell the renderer to render content to atlas
+    const Kit_SubtitleDecoder *subtitle_dec = dec->userdata;
     Kit_GetSubtitleRendererData(subtitle_dec->renderer, subtitle_dec->atlas, texture, sync_ts);
 }
 
-int Kit_GetSubtitleDecoderInfo(Kit_Decoder *dec, SDL_Texture *texture, SDL_Rect *sources, SDL_Rect *targets, int limit) {
-    Kit_SubtitleDecoder *subtitle_dec = dec->userdata;
+int Kit_GetSubtitleDecoderInfo(const Kit_Decoder *dec, const SDL_Texture *texture, SDL_Rect *sources, SDL_Rect *targets, int limit) {
+    const Kit_SubtitleDecoder *subtitle_dec = dec->userdata;
     return Kit_GetAtlasItems(subtitle_dec->atlas, sources, targets, limit);
 }

@@ -8,8 +8,6 @@
 #include "kitchensink/kitconfig.h"
 
 typedef struct Kit_TextureAtlasItem {
-    int cur_shelf; //< Current shelf number in cache
-    int cur_slot; //< Current slot on shelf in cache
     SDL_Rect source; //< Source coordinates on cache surface
     SDL_Rect target; //< Target coordinates on output surface
 } Kit_TextureAtlasItem;
@@ -35,6 +33,6 @@ KIT_LOCAL void Kit_FreeAtlas(Kit_TextureAtlas *atlas);
 KIT_LOCAL void Kit_ClearAtlasContent(Kit_TextureAtlas *atlas);
 KIT_LOCAL void Kit_CheckAtlasTextureSize(Kit_TextureAtlas *atlas, SDL_Texture *texture);
 KIT_LOCAL int Kit_GetAtlasItems(const Kit_TextureAtlas *atlas, SDL_Rect *sources, SDL_Rect *targets, int limit);
-KIT_LOCAL int Kit_AddAtlasItem(Kit_TextureAtlas *atlas, SDL_Texture *texture, SDL_Surface *surface, const SDL_Rect *target);
+KIT_LOCAL int Kit_AddAtlasItem(Kit_TextureAtlas *atlas, SDL_Texture *texture, const SDL_Surface *surface, const SDL_Rect *target);
 
 #endif // KITATLAS_H

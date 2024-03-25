@@ -1,4 +1,4 @@
-#include <stdlib.h>
+#include <stddef.h>
 #include "kitchensink/internal/kitlibstate.h"
 
 #ifdef LIBASS

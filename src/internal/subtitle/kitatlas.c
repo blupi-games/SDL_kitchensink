@@ -1,9 +1,8 @@
 #include <assert.h>
 
 #include "kitchensink/internal/subtitle/kitatlas.h"
-#include "kitchensink/internal/utils/kitlog.h"
 
-static int min(int a, int b) {
+static int Kit_min(int a, int b) {
     if(a < b)
         return a;
     return b;
@@ -13,7 +12,7 @@ static int min(int a, int b) {
 Kit_TextureAtlas* Kit_CreateAtlas() {
     Kit_TextureAtlas *atlas = calloc(1, sizeof(Kit_TextureAtlas));
     if(atlas == NULL) {
-        goto exit_0;
+        goto EXIT_0;
     }
     atlas->cur_items = 0;
     atlas->max_items = 1024;
@@ -24,22 +23,22 @@ Kit_TextureAtlas* Kit_CreateAtlas() {
     // Allocate items. These hold the surfaces that should be in atlas
     atlas->items = calloc(atlas->max_items, sizeof(Kit_TextureAtlasItem));
     if(atlas->items == NULL) {
-        goto exit_1;
+        goto EXIT_1;
     }
 
     // Allocate shelves. These describe the used space of the atlas
     atlas->shelves = calloc(atlas->max_shelves, sizeof(Kit_Shelf));
     if(atlas->shelves == NULL) {
-        goto exit_2;
+        goto EXIT_2;
     }
 
     return atlas;
 
-exit_2:
+EXIT_2:
     free(atlas->items);
-exit_1:
+EXIT_1:
     free(atlas);
-exit_0:
+EXIT_0:
     return NULL;
 }
 
@@ -56,18 +55,16 @@ void Kit_FreeAtlas(Kit_TextureAtlas *atlas) {
     free(atlas);
 }
 
-void Kit_SetItemAllocation(Kit_TextureAtlasItem *item, SDL_Surface *surface, int shelf, int slot, int x, int y) {
+void Kit_SetItemAllocation(Kit_TextureAtlasItem *item, const SDL_Surface *surface, int x, int y) {
     assert(item != NULL);
 
-    item->cur_shelf = shelf;
-    item->cur_slot = slot;
     item->source.x = x;
     item->source.y = y;
     item->source.w = surface->w;
     item->source.h = surface->h;
 }
 
-int Kit_FindFreeAtlasSlot(Kit_TextureAtlas *atlas, SDL_Surface *surface, Kit_TextureAtlasItem *item) {
+int Kit_FindFreeAtlasSlot(const Kit_TextureAtlas *atlas, const SDL_Surface *surface, Kit_TextureAtlasItem *item) {
     assert(atlas != NULL);
     assert(item != NULL);
 
@@ -75,13 +72,11 @@ int Kit_FindFreeAtlasSlot(Kit_TextureAtlas *atlas, SDL_Surface *surface, Kit_Tex
     int shelf_h;
     int total_remaining_h = atlas->h;
     int total_reserved_h = 0;
-
-    // First, try to look for a good, existing shelf
     int best_shelf_idx = -1;
     int best_shelf_h = atlas->h;
     int best_shelf_y = 0;
     
-    // Try to find a good shelf to put this item in
+    // Try to find a good, existing shelf to put this item in.
     int shelf_idx;
     for(shelf_idx = 0; shelf_idx < atlas->max_shelves; shelf_idx++) {
         shelf_w = atlas->shelves[shelf_idx].width;
@@ -100,13 +95,11 @@ int Kit_FindFreeAtlasSlot(Kit_TextureAtlas *atlas, SDL_Surface *surface, Kit_Tex
         }
     }
 
-    // If existing shelf found, put the item there. Otherwise create a new shelf.
+    // If existing shelf found, put the item there. Otherwise, create a new shelf.
     if(best_shelf_idx != -1) {
         Kit_SetItemAllocation(
             item,
             surface,
-            best_shelf_idx,
-            atlas->shelves[best_shelf_idx].count,
             atlas->shelves[best_shelf_idx].width,
             best_shelf_y);
         atlas->shelves[best_shelf_idx].width += surface->w;
@@ -119,8 +112,6 @@ int Kit_FindFreeAtlasSlot(Kit_TextureAtlas *atlas, SDL_Surface *surface, Kit_Tex
         Kit_SetItemAllocation(
             item,
             surface,
-            shelf_idx,
-            0,
             0,
             total_reserved_h);
         return 0;
@@ -145,10 +136,11 @@ void Kit_CheckAtlasTextureSize(Kit_TextureAtlas *atlas, SDL_Texture *texture) {
 int Kit_GetAtlasItems(const Kit_TextureAtlas *atlas, SDL_Rect *sources, SDL_Rect *targets, int limit) {
     assert(atlas != NULL);
     assert(limit >= 0);
+    const Kit_TextureAtlasItem *item = NULL;
 
-    int max_count = min(atlas->cur_items, limit);
+    int max_count = Kit_min(atlas->cur_items, limit);
     for(int i = 0; i < max_count; i++) {
-        Kit_TextureAtlasItem *item = &atlas->items[i];
+        item = &atlas->items[i];
         if(sources != NULL)
             memcpy(&sources[i], &item->source, sizeof(SDL_Rect));
         if(targets != NULL)
@@ -157,7 +149,7 @@ int Kit_GetAtlasItems(const Kit_TextureAtlas *atlas, SDL_Rect *sources, SDL_Rect
     return max_count;
 }
 
-int Kit_AddAtlasItem(Kit_TextureAtlas *atlas, SDL_Texture *texture, SDL_Surface *surface, const SDL_Rect *target) {
+int Kit_AddAtlasItem(Kit_TextureAtlas *atlas, SDL_Texture *texture, const SDL_Surface *surface, const SDL_Rect *target) {
     assert(atlas != NULL);
     assert(surface != NULL);
     assert(target != NULL);
@@ -170,8 +162,6 @@ int Kit_AddAtlasItem(Kit_TextureAtlas *atlas, SDL_Texture *texture, SDL_Surface 
     Kit_TextureAtlasItem item;
     memset(&item, 0, sizeof(Kit_TextureAtlasItem));
     memcpy(&item.target, target, sizeof(SDL_Rect));
-    item.cur_shelf = -1;
-    item.cur_slot = -1;
 
     // Allocate space for the new item
     if(Kit_FindFreeAtlasSlot(atlas, surface, &item) != 0) {

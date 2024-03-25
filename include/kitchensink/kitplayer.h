@@ -63,7 +63,7 @@ typedef struct Kit_PlayerInfo {
 /**
  * @brief Creates a new player from a source.
  * 
- * Creates a new player from the given source. The source must be previously succesfully
+ * Creates a new player from the given source. The source must be previously successfully
  * initialized by calling either Kit_CreateSourceFromUrl() or Kit_CreateSourceFromCustom(), 
  * and it must not be used by any other player. Source must stay valid during the whole 
  * playback (as in, don't close it while stuff is playing).
@@ -78,7 +78,7 @@ typedef struct Kit_PlayerInfo {
  * or pick them automatically by using Kit_GetBestSourceStream().
  * 
  * On success, this will return an initialized Kit_Player which can later be freed by Kit_ClosePlayer().
- * On error, NULL is returned and a more detailed error is availably via Kit_GetError().
+ * On error, NULL is returned and a more detailed error is available via Kit_GetError().
  * 
  * For example:
  * ```
@@ -166,23 +166,35 @@ KIT_API int Kit_GetPlayerSubtitleStream(const Kit_Player *player);
 /**
  * @brief Fetches a new video frame from the player
  * 
- * Note that the output texture must be previously allocated and valid. 
- * 
+ * This is the same as Kit_GetPlayerVideoDataArea() but without the area argument.
+ * Please refer to that function for description.
+ */
+KIT_API int Kit_GetPlayerVideoData(Kit_Player *player, SDL_Texture *texture);
+
+/**
+ * @brief Fetches a new video frame from the player
+ *
+ * Note that the output texture must be previously allocated and valid.
+ *
  * It is important to select the correct texture format and size. If you pick a different
  * texture format or size from what the decoder outputs, then the decoder will attempt to convert
  * the frames to fit the texture. This will slow down the decoder a *lot* however, so if possible,
  * pick the texture format from what Kit_GetPlayerInfo() outputs.
- * 
+ *
  * Access flag for the texture *MUST* always be SDL_TEXTUREACCESS_STATIC! Anything else will lead to
  * undefined behaviour.
- * 
+ *
+ * Area argument can be given to acquire the current video frame content area. Note that this may change
+ * if you have video that changes frame size on the fly.
+ *
  * This function will do nothing if player playback has not been started.
- * 
+ *
  * @param player Player instance
  * @param texture A previously allocated texture
+ * @param area Rendered video surface area
  * @return 0 on success, 1 on error
  */
-KIT_API int Kit_GetPlayerVideoData(Kit_Player *player, SDL_Texture *texture);
+KIT_API int Kit_GetPlayerVideoDataArea(Kit_Player *player, SDL_Texture *texture, SDL_Rect *area);
 
 /**
  * @brief Fetches subtitle data from the player
@@ -192,7 +204,7 @@ KIT_API int Kit_GetPlayerVideoData(Kit_Player *player, SDL_Texture *texture);
  * Note that the output texture must be previously allocated and valid. Make sure to have large
  * enough a texture for the rendering resolution you picked! If your rendering resolution if 4k,
  * then make sure to have texture sized 4096x4096 etc. This gives the texture room to handle the
- * worst case subtitle textures. If your resolutions is too small, this function will return
+ * worst case subtitle textures. If your resolution is too small, this function will return
  * value -1. At that point you can replace your current texture with a bigger one on the fly.
  * 
  * Note that the texture format for the atlas texture *MUST* be SDL_PIXELFORMAT_RGBA32 and
@@ -215,7 +227,7 @@ KIT_API int Kit_GetPlayerVideoData(Kit_Player *player, SDL_Texture *texture);
  * 
  * @param player Player instance
  * @param texture A previously allocated texture
- * @param sources List of source rectangles to copy fropm
+ * @param sources List of source rectangles to copy from
  * @param targets List of target rectangles to render
  * @param limit Defines the maximum size of your rectangle lists
  * @return Number of sources or <0 on error
@@ -234,7 +246,7 @@ KIT_API int Kit_GetPlayerSubtitleData(Kit_Player *player,
  * Outputted audio data will be precisely what is described by the output format struct given
  * by Kit_GetPlayerInfo().
  * 
- * This function will attemt to read the maximum allowed amount of data allowed by the length
+ * This function will attempt to read the maximum allowed amount of data allowed by the length
  * argument. It is possible however that there is not enough data available, at which point
  * this function will read less and return value may differ from maximum allowed value.
  * Return value 0 should be taken as a hint that there is nothing available.
@@ -335,6 +347,24 @@ KIT_API double Kit_GetPlayerDuration(const Kit_Player *player);
  * @return Position
  */
 KIT_API double Kit_GetPlayerPosition(const Kit_Player *player);
+
+/**
+ * @brief Get the player aspect ratio, if playing video.
+ *
+ * Sets numerator and denominator if it is possible to get a valid aspect ratio.
+ * If valid values were found, then 0 is returned. Otherwise 1 is returned, and num
+ * and den parameters are not changed.
+ *
+ * Aspect ratio may change during the playback of the video. This function will attempt
+ * to first get the aspect ratio of the current frame. If that is not set, then decoder
+ * and finally demuxer data will be tried.
+ *
+ * @param player Player instance
+ * @param num Numerator
+ * @param den Denominator
+ * @return 0 if got valid values, 1 otherwise.
+ */
+KIT_API int Kit_GetPlayerAspectRatio(const Kit_Player *player, int *num, int *den);
 
 #ifdef __cplusplus
 }

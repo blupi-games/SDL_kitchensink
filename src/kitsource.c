@@ -1,8 +1,6 @@
 #include <stdlib.h>
-#include <string.h>
 #include <assert.h>
 
-#include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/opt.h>
 
@@ -34,19 +32,19 @@ Kit_Source* Kit_CreateSourceFromUrl(const char *url) {
     // Attempt to open source
     if(avformat_open_input((AVFormatContext **)&src->format_ctx, url, NULL, NULL) < 0) {
         Kit_SetError("Unable to open source Url");
-        goto exit_0;
+        goto EXIT_0;
     }
 
     // Scan source information (may seek forwards)
     if(_ScanSource(src->format_ctx)) {
-        goto exit_1;
+        goto EXIT_1;
     }
 
     return src;
 
-exit_1:
+EXIT_1:
     avformat_close_input((AVFormatContext **)&src->format_ctx);
-exit_0:
+EXIT_0:
     free(src);
     return NULL;
 }
@@ -63,20 +61,20 @@ Kit_Source* Kit_CreateSourceFromCustom(Kit_ReadCallback read_cb, Kit_SeekCallbac
     uint8_t *avio_buf = av_malloc(AVIO_BUF_SIZE);
     if(avio_buf == NULL) {
         Kit_SetError("Unable to allocate avio buffer");
-        goto exit_0;
+        goto EXIT_0;
     }
 
     AVFormatContext *format_ctx = avformat_alloc_context();
     if(format_ctx == NULL) {
         Kit_SetError("Unable to allocate format context");
-        goto exit_1;
+        goto EXIT_1;
     }
 
     AVIOContext *avio_ctx = avio_alloc_context(
         avio_buf, AVIO_BUF_SIZE, 0, userdata, read_cb, 0, seek_cb);
     if(avio_ctx == NULL) {
         Kit_SetError("Unable to allocate avio context");
-        goto exit_2;
+        goto EXIT_2;
     }
 
     // Set the format as AVIO format
@@ -85,12 +83,12 @@ Kit_Source* Kit_CreateSourceFromCustom(Kit_ReadCallback read_cb, Kit_SeekCallbac
     // Attempt to open source
     if(avformat_open_input(&format_ctx, "", NULL, NULL) < 0) {
         Kit_SetError("Unable to open custom source");
-        goto exit_3;
+        goto EXIT_3;
     }
 
     // Scan source information (may seek forwards)
     if(_ScanSource(format_ctx)) {
-        goto exit_4;
+        goto EXIT_4;
     }
 
     // Set internals
@@ -98,21 +96,22 @@ Kit_Source* Kit_CreateSourceFromCustom(Kit_ReadCallback read_cb, Kit_SeekCallbac
     src->avio_ctx = avio_ctx;
     return src;
 
-exit_4:
+EXIT_4:
     avformat_close_input(&format_ctx);
-exit_3:
+EXIT_3:
     av_freep(&avio_ctx);
-exit_2:
+EXIT_2:
     avformat_free_context(format_ctx);
-exit_1:
+EXIT_1:
     av_freep(&avio_buf);
-exit_0:
+EXIT_0:
     free(src);
     return NULL;
 }
 
 static int _RWReadCallback(void *userdata, uint8_t *buf, int size) {
-    return SDL_RWread((SDL_RWops*)userdata, buf, 1, size);
+    size_t bytes_read = SDL_RWread((SDL_RWops*)userdata, buf, 1, size);
+    return bytes_read == 0 ? AVERROR_EOF : bytes_read;
 }
 
 static int64_t _RWGetSize(SDL_RWops *rw_ops) {
@@ -170,14 +169,15 @@ int Kit_GetSourceStreamInfo(const Kit_Source *src, Kit_SourceStreamInfo *info, i
     assert(src != NULL);
     assert(info != NULL);
 
-    AVFormatContext *format_ctx = (AVFormatContext *)src->format_ctx;
+    const AVFormatContext *format_ctx = (AVFormatContext *)src->format_ctx;
     if(index < 0 || index >= format_ctx->nb_streams) {
         Kit_SetError("Invalid stream index");
         return 1;
     }
 
-    AVStream *stream = format_ctx->streams[index];
-    switch(stream->codec->codec_type) {
+    const AVStream *stream = format_ctx->streams[index];
+    enum AVMediaType codec_type = stream->codecpar->codec_type;
+    switch(codec_type) {
         case AVMEDIA_TYPE_UNKNOWN: info->type = KIT_STREAMTYPE_UNKNOWN; break;
         case AVMEDIA_TYPE_DATA: info->type = KIT_STREAMTYPE_DATA; break;
         case AVMEDIA_TYPE_VIDEO: info->type = KIT_STREAMTYPE_VIDEO; break;

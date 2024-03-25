@@ -27,7 +27,7 @@ typedef enum Kit_StreamType {
     KIT_STREAMTYPE_VIDEO, ///< Video stream
     KIT_STREAMTYPE_AUDIO, ///< Audio stream
     KIT_STREAMTYPE_DATA, ///< Data stream
-    KIT_STREAMTYPE_SUBTITLE, ///< Subtitle streawm
+    KIT_STREAMTYPE_SUBTITLE, ///< Subtitle stream
     KIT_STREAMTYPE_ATTACHMENT ///< Attachment stream (images, etc)
 } Kit_StreamType;
 
@@ -73,7 +73,7 @@ typedef struct Kit_SourceStreamInfo {
 typedef int (*Kit_ReadCallback)(void *userdata, uint8_t *buf, int size);
 
 /**
- * @brief Callback function type for seeking data strema
+ * @brief Callback function type for seeking data stream
  * 
  * Used by Kit_CreateSourceFromCustom() for seeking a user defined source.
  * 
@@ -110,7 +110,8 @@ typedef int64_t (*Kit_SeekCallback)(void *userdata, int64_t offset, int whence);
  * 
  * For example:
  * ```
- * if(Kit_CreateSourceFromUrl(filename) == NULL) {
+ * Kit_Source *src = Kit_CreateSourceFromUrl(filename);
+ * if(src == NULL) {
  *     fprintf(stderr, "Error: %s\n", Kit_GetError());
  *     return 1;
  * }
@@ -133,7 +134,8 @@ KIT_API Kit_Source* Kit_CreateSourceFromUrl(const char *url);
  * 
  * For example:
  * ```
- * if(Kit_CreateSourceFromCustom(read_fn, seek_fn, fp) == NULL) {
+ * Kit_Source *src = Kit_CreateSourceFromCustom(read_fn, seek_fn, fp);
+ * if(src == NULL) {
  *     fprintf(stderr, "Error: %s\n", Kit_GetError());
  *     return 1;
  * }
@@ -162,7 +164,8 @@ KIT_API Kit_Source* Kit_CreateSourceFromCustom(Kit_ReadCallback read_cb, Kit_See
  * For example:
  * ```
  * SDL_RWops *rw = SDL_RWFromFile("myvideo.mkv", "rb");
- * if(Kit_CreateSourceFromRW(rw) == NULL) {
+ * Kit_Source *src = Kit_CreateSourceFromRW(rw);
+ * if(src == NULL) {
  *     fprintf(stderr, "Error: %s\n", Kit_GetError());
  *     return 1;
  * }

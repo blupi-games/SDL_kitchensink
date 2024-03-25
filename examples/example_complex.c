@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Create a resizable window.
-    window = SDL_CreateWindow("Example Player", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow(filename, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_RESIZABLE);
     if(window == NULL) {
         fprintf(stderr, "Unable to create a new window!\n");
         return 1;
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 
     // Create an accelerated renderer. Enable vsync, so we don't need to play around with SDL_Delay.
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
-    if(window == NULL) {
+    if(renderer == NULL) {
         fprintf(stderr, "Unable to create a renderer!\n");
         return 1;
     }
@@ -108,9 +108,12 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Allow Kit to use more threads
-    Kit_SetHint(KIT_HINT_THREAD_COUNT, SDL_GetCPUCount() <= 8 ? SDL_GetCPUCount() : 8);
-    Kit_SetHint(KIT_HINT_FONT_HINTING, KIT_FONT_HINTING_LIGHT);
+    // Set to 0 to allow ffmpeg decide thread count.
+    Kit_SetHint(KIT_HINT_THREAD_COUNT, 0);
+
+    // Lots of buffers for smooth playback (will eat up more memory, too).
+    Kit_SetHint(KIT_HINT_VIDEO_BUFFER_FRAMES, 5);
+    Kit_SetHint(KIT_HINT_AUDIO_BUFFER_FRAMES, 192);
 
     // Open up the sourcefile.
     // This can be a local file, network url, ...
@@ -179,6 +182,10 @@ int main(int argc, char *argv[]) {
             pinfo.subtitle.codec.name,
             pinfo.subtitle.codec.description,
             pinfo.video.codec.threads);
+    }
+    int num, den;
+    if(Kit_GetPlayerAspectRatio(player, &num, &den) == 0) {
+        fprintf(stderr, "Aspect ratio: %d:%d\n", num, den);
     }
     fprintf(stderr, "Duration: %f seconds\n", Kit_GetPlayerDuration(player));
 
@@ -344,9 +351,14 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        // Refresh videotexture and render it
-        Kit_GetPlayerVideoData(player, video_tex);
-        SDL_RenderCopy(renderer, video_tex, NULL, NULL);
+        // Clear window first, in case of weirdly sized frames.
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+        SDL_RenderClear(renderer);
+
+        // Refresh the video texture and render it
+        SDL_Rect area;
+        Kit_GetPlayerVideoDataArea(player, video_tex, &area);
+        SDL_RenderCopy(renderer, video_tex, &area, NULL);
 
         // Refresh subtitle texture atlas and render subtitle frames from it
         // For subtitles, use screen size instead of video size for best quality
